@@ -21,7 +21,7 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes, JobQueue
 )
 from dotenv import load_dotenv
-
+from telegram.ext import filters, CallbackQueryHandler
 # ----- ENV -----
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
