@@ -10,7 +10,8 @@ import time
 import sqlite3
 import hashlib
 from datetime import datetime, time as dtime, timedelta, timezone
-
+import nest_asyncio
+nest_asyncio.apply()
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
