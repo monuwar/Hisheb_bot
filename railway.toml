@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python hisheb_bot.py"
+
+[env]
+PYTHONUNBUFFERED = "1"
