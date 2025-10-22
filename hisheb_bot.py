@@ -444,7 +444,103 @@ async def restore_reminders(job_queue: JobQueue):
             REMINDER_JOBS[uid] = job
         except Exception:
             continue
+# --- Reset Command (Full Pro Version with Backup + Confirm + Cancel + Processing Animation) ---
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import csv
+import io
+import time
 
+pending_reset = {}
+
+def reset_cmd(update, context):
+    user_id = update.effective_user.id
+    if user_id in pending_reset:
+        update.message.reply_text("⚠️ You already have a pending reset request.\nPlease type CONFIRM or press Cancel below.")
+        return
+
+    pending_reset[user_id] = True
+    keyboard = [
+        [InlineKeyboardButton("❌ Cancel", callback_data="cancel_reset")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    update.message.reply_text(
+        "⚠️ **Warning!**\n\n"
+        "Are you sure you want to reset **all your data**?\n"
+        "Before deletion, your data will be backed up and sent as a CSV file.\n\n"
+        "Once confirmed, everything will be *permanently deleted* and cannot be recovered.\n\n"
+        "👉 Type **CONFIRM** to proceed.\n"
+        "❌ Or press the Cancel button below to abort this action.",
+        parse_mode="Markdown",
+        reply_markup=reply_markup
+    )
+
+def handle_confirmation(update, context):
+    user_id = update.effective_user.id
+    text = update.message.text.strip().upper()
+
+    if user_id not in pending_reset:
+        return
+
+    if text == "CONFIRM":
+        # Step 1: Show processing animation
+        processing_msg = update.message.reply_text("🕒 Processing your reset request...")
+        time.sleep(2.5)
+        context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=processing_msg.message_id,
+            text="📦 Preparing your backup..."
+        )
+
+        conn = sqlite3.connect(DB)
+        c = conn.cursor()
+        c.execute("SELECT amount, category, note, date FROM expenses WHERE user_id=?", (user_id,))
+        rows = c.fetchall()
+
+        # Step 2: Send CSV backup if data exists
+        if rows:
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(["Amount", "Category", "Note", "Date"])
+            writer.writerows(rows)
+            output.seek(0)
+            context.bot.send_document(
+                chat_id=update.effective_chat.id,
+                document=io.BytesIO(output.getvalue().encode()),
+                filename="Hisheb_Backup.csv",
+                caption="📦 Here’s a backup of your data before reset."
+            )
+
+        # Step 3: Delete all data
+        c.execute("DELETE FROM expenses WHERE user_id=?", (user_id,))
+        conn.commit()
+        conn.close()
+        pending_reset.pop(user_id)
+
+        # Step 4: Success message
+        context.bot.edit_message_text(
+            chat_id=update.effective_chat.id,
+            message_id=processing_msg.message_id,
+            text="🧹 **Data Cleared Successfully!**\n\n"
+                 "All your records have been deleted, and a backup CSV has been sent above.\n\n"
+                 "✨ You can now start fresh and add new transactions anytime!\n\n"
+                 "💡 *Tip:* Use /add to record your first new expense.",
+            parse_mode="Markdown"
+        )
+
+    else:
+        update.message.reply_text("❗ Please type only CONFIRM or press Cancel.")
+
+def cancel_reset(update, context):
+    query = update.callback_query
+    user_id = query.from_user.id
+    if user_id in pending_reset:
+        pending_reset.pop(user_id)
+        query.edit_message_text("❎ Reset action has been canceled. Your data is safe.")
+    else:
+        query.edit_message_text("ℹ️ No active reset request found.")
+
+# --- Register Handlers ---
 # -------------------- Main ------------------------
 def build_app():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
@@ -468,8 +564,14 @@ def build_app():
     app.add_handler(CommandHandler("export", export_cmd))
     app.add_handler(CommandHandler("chart", chart_cmd))
 
-    app.add_handler(CommandHandler("setreminder", setreminder_cmd))
+   
+app.add_handler(CommandHandler("setreminder", setreminder_cmd))
     app.add_handler(CommandHandler("reminderoff", reminderoff_cmd))
+
+    # ✅ Reset System Handlers
+    app.add_handler(CommandHandler("reset", reset_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_confirmation))
+    app.add_handler(CallbackQueryHandler(cancel_reset, pattern="cancel_reset"))
 
     return app
 
