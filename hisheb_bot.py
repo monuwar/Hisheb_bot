@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-# 🚀 Hisheb Bot Pro (Full Version + Reset Feature)
-# All Commands: /start /help /commands /add /summary /daily /monthly /setlimit /limit /status
-#               /lock /unlock /chart /export /setreminder /reminderoff /reset
+# 💸 Hisheb Bot Pro v3 — Full Features (English + Emoji UI)
+# Author: Monuwar Hussain
+# Compatible: Railway | Python-Telegram-Bot v20+
+# Includes all commands + CSV Backup Reset Feature
 
 import os
 import io
@@ -9,7 +10,7 @@ import csv
 import time
 import sqlite3
 import hashlib
-from datetime import datetime, time as dtime, timedelta, timezone
+from datetime import datetime, time as dtime, timedelta
 import nest_asyncio
 nest_asyncio.apply()
 import matplotlib
@@ -23,7 +24,7 @@ from telegram.ext import (
 )
 from dotenv import load_dotenv
 
-# ============ ENV ============
+# ========== ENV ==========
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
@@ -31,7 +32,7 @@ if not BOT_TOKEN:
 
 DB = "expenses.db"
 
-# ============ DB ============
+# ========== DB ==========
 def db_conn():
     return sqlite3.connect(DB)
 
@@ -62,7 +63,7 @@ def init_db():
 
 init_db()
 
-# ============ HELPERS ============
+# ========== HELPERS ==========
 def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -78,44 +79,53 @@ def month_range():
         end = datetime(now.year, now.month + 1, 1)
     return int(start.timestamp()), int(end.timestamp()) - 1
 
-# ============ COMMANDS ============
+def today_range():
+    now = datetime.now()
+    start = datetime(now.year, now.month, now.day)
+    end = start + timedelta(days=1)
+    return int(start.timestamp()), int(end.timestamp()) - 1
+
+# ========== CORE COMMANDS ==========
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "👋 Welcome to *Hisheb Bot Pro!*\n\n"
-        "Track your daily and monthly expenses easily 💰\n"
-        "Type /commands to see everything at a glance.",
+        "👋 *Welcome to Hisheb Bot Pro!*\n\n"
+        "Track your daily & monthly expenses effortlessly 💰\n"
+        "Use /commands to explore all available features.",
         parse_mode="Markdown"
     )
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "ℹ️ Use /commands to see all features with examples.\n\n"
-        "Quick start:\n• /add 150 food lunch\n• /daily /monthly /chart\n• /setlimit 10000 then /status",
+        "Quick start:\n"
+        "• `/add 150 food lunch`\n"
+        "• `/daily`, `/monthly`, `/chart`\n"
+        "• `/setlimit 10000` then `/status`",
         parse_mode="Markdown"
     )
 
 async def commands_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = (
+    msg = (
         "📘 *Hisheb — Full Command List*\n\n"
-        "/add <amount> <category> [note] — Add expense\n"
-        "/summary — All-time summary by category\n"
-        "/daily — Today's summary\n"
-        "/monthly — This month's summary\n"
-        "/setlimit <amount> — Set monthly limit\n"
-        "/limit — Show current limit\n"
-        "/status — Month spent vs limit\n"
-        "/chart — Pie chart by category\n"
-        "/export — Export CSV (this month)\n"
-        "/lock <PIN> — Lock bot\n"
-        "/unlock <PIN> — Unlock bot\n"
-        "/setreminder <HH:MM> — Daily reminder\n"
-        "/reminderoff — Disable reminder\n"
-        "/reset — Reset all data (with backup)\n"
-        "/help — Show help"
+        "➕ `/add <amount> <category> [note]` — Add expense\n"
+        "📊 `/summary` — All-time summary by category\n"
+        "📅 `/daily` — Today’s summary\n"
+        "🗓️ `/monthly` — This month’s summary\n"
+        "💰 `/setlimit <amount>` — Set monthly limit\n"
+        "📈 `/limit` — Show current limit\n"
+        "🧾 `/status` — Month spent vs limit\n"
+        "🥧 `/chart` — Pie chart by category\n"
+        "📤 `/export` — Export CSV (this month)\n"
+        "🔐 `/lock <PIN>` — Lock bot\n"
+        "🔓 `/unlock <PIN>` — Unlock bot\n"
+        "⏰ `/setreminder <HH:MM>` — Daily reminder\n"
+        "🛑 `/reminderoff` — Disable reminder\n"
+        "⚠️ `/reset` — Reset all data (with backup)\n"
+        "ℹ️ `/help` — Show help info"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
-# ============ RESET SYSTEM ============
+# ========== RESET SYSTEM ==========
 pending_reset = {}
 
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -139,8 +149,8 @@ async def handle_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     if user_id not in pending_reset:
         return
-
     text = update.message.text.strip().upper()
+
     if text != "CONFIRM":
         await update.message.reply_text("❗ Please type only CONFIRM or press Cancel.")
         return
@@ -190,7 +200,7 @@ async def cancel_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await query.edit_message_text("ℹ️ No active reset request found.")
 
-# ============ APP ============
+# ========== BUILD APP ==========
 def build_app():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -204,6 +214,6 @@ def build_app():
     return app
 
 if __name__ == "__main__":
-    print("🚀 Starting Hisheb Bot Pro...")
+    print("🚀 Starting Hisheb Bot Pro (Full English + Emoji)...")
     application = build_app()
     application.run_polling()
